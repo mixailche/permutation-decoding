@@ -66,10 +66,7 @@ namespace Construct {
         const Codec::PolarSubcodeSpecification& spec
     );
 
-    std::vector<Perm> BuildBlockPermSet_LeastErrorProb(
-        size_t count, size_t numLayers,
-        size_t l, size_t h
-    );
+    std::vector<Perm> BuildJointPermSet(size_t count, size_t numLayers, size_t l, size_t h);
 
     std::vector<Perm> BuildAffineGF2EPermSet_LeastErrorProb(
         size_t count, size_t minDistFactor, size_t minDistShift,

@@ -7,6 +7,7 @@
 #include "NTL/mat_GF2.h"
 #include "Specification.h"
 #include "Perm.hpp"
+#include "Utils.hpp"
 
 namespace Construct {
     NTL::mat_GF2 BuildFreezingMatrix(const Codec::PolarSubcodeSpecification& spec);
@@ -40,7 +41,7 @@ namespace Construct {
     Codec::PolarSubcodeSpecification BuildPermFriendlyRandomizedPolarSubcode(
         const Codec::PolarCodeSpecification& polarSpec,
         const std::vector<double>& errorProbs,
-        const std::vector<Perm>& linearPerms,
+        const std::vector<Utils::RawPerm>& linearPerms,
         size_t numDFS_A, size_t numDFS_B, size_t l
     );
 
