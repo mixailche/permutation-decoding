@@ -371,7 +371,7 @@ static Perm RandomTrailingDiagPerm(size_t numLayers, size_t blockSize)
     return Perm::MakeAffine(matrix, NTL::vec_GF2(NTL::INIT_SIZE, numLayers));
 }
 
-std::vector<Perm> Construct::BuildBlockPermSet_LeastErrorProb(
+std::vector<Perm> Construct::BuildJointPermSet(
     size_t count, size_t numLayers,
     size_t l, size_t h)
 {

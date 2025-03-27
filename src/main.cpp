@@ -21,7 +21,7 @@ int main(void)
     // Dummy example
     double snr;
     size_t length, dimension, numDFS_A, numDFS_B, l, h, maxPaths, permsCount;
-    std::cin >> snr >> length >> dimension >> l >> h >> maxPaths >> permsCount;
+    std::cin >> snr >> length >> dimension >> numDFS_A >> numDFS_B >> l >> h >> maxPaths >> permsCount;
     
     auto numLayers = Utils::IntLog2(length);
 
@@ -37,12 +37,13 @@ int main(void)
 
     using namespace Construct;
 
-    auto errorProbs = DensityEvolutionGA(2.0, U)
-    auto polar = BuildPo
+    auto errorProbs = DensityEvolutionGA(2.0, numLayers);
+    auto polar = BuildFrozenSet_AutomorphismInvariant(numLayers, dimension, blockSizesH, errorProbs);
     auto linearPerms = Utils::ListBlockDigitsPermutations(blockSizesL);
-    auto spec = BuildPermFriendlyRandomizedPolarSubcode(;
+    auto spec = BuildPermFriendlyRandomizedPolarSubcode(polar, errorProbs, linearPerms, numDFS_A, numDFS_B, l);
+    auto perms = BuildJointPermSet(permsCount, numLayers, l, h);
 
-    Running::Simulate_PolarSubcodePermSCL();
+    Running::Simulate_PolarSubcodePermSCL(snr, 10'000'000, 100, spec, perms, maxPaths, PrintErrorRate);
 
     return 0;
 }

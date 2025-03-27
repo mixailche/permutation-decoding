@@ -477,7 +477,7 @@ Codec::PolarSubcodeSpecification Construct::BuildRandomizedPolarSubcode(
 Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubcode(
     const Codec::PolarCodeSpecification& polarSpec,
     const std::vector<double>& errorProbs,
-    const std::vector<Perm>& linearPerms,
+    const std::vector<Utils::RawPerm>& linearPerms,
     size_t numDFS_A, size_t numDFS_B, size_t l)
 {
     static std::random_device device;
