@@ -478,7 +478,7 @@ Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubc
     const Codec::PolarCodeSpecification& polarSpec,
     const std::vector<double>& errorProbs,
     const std::vector<Utils::RawPerm>& linearPerms,
-    size_t numDFS_A, size_t numDFS_B, size_t l)
+    size_t numDFS_A, size_t numDFS_B)
 {
     static std::random_device device;
     static std::mt19937 gen(device());
@@ -502,12 +502,11 @@ Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubc
         }
     }
 
-    auto applyDFC = [&, mask = (1ull << l) - 1](size_t i) -> void {
+    auto applyDFC = [&](size_t i) -> void {
         std::vector<size_t> equation;
 
         for (size_t j = 0; j < i; j++) {
-            if ((j | mask) < i &&
-                !polarSpec.Frozen[j] && distr(gen) &&
+            if (!polarSpec.Frozen[j] && distr(gen) &&
                 std::all_of(linearPerms.begin(), linearPerms.end(), [&](const auto& perm) {
                     return ApplyDigitsPerm(perm, j) < ApplyDigitsPerm(perm, i);
                 })) {

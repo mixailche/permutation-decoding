@@ -49,7 +49,7 @@ Perm Perm::MakeAffine(NTL::mat_GF2 factor, NTL::vec_GF2 shift)
 
     for (size_t i = 0; i < cardinality; i++) {
         auto digitsVector = Math::IndexToGF2Vec(i, length);
-        newIndices[i] = Math::GF2VecToIndex(digitsVector * factor + shift);
+        newIndices[i] = Math::GF2VecToIndex(factor * digitsVector + shift);
     }
 
     return newIndices;
@@ -379,54 +379,68 @@ std::vector<Perm> Construct::BuildJointPermSet(
     auto blockSize = 1ull << l;
 
     auto kernel = NTL::transpose(Math::BuildArikanKernel(l));
-    std::vector<NTL::mat_GF2> usedMatrices = { NTL::ident_mat_GF2(blockSize) };
+    auto blockPerms = Utils::ListPermutations(blockSize);
 
-    std::vector<size_t> digitPermBlockSizes = { l };
-    for (size_t i = 0; i < numLayers - l; i++) {
-        digitPermBlockSizes.push_back(1);
-    }
-    auto blockPerms = Utils::ListBlockDigitsPermutations(digitPermBlockSizes);
     static std::random_device device;
     static std::mt19937 gen(device());
+
     std::uniform_int_distribution<size_t> blockPermDistr(0, blockPerms.size() - 1);
     std::vector<Perm> perms = { Perm::MakeIdentity(length) };
+    std::vector<NTL::mat_GF2> usedMatrices = { NTL::ident_mat_GF2(blockSize) };
 
-    for (size_t i = 1; i < count; i++) {
-        auto& blockPerm = blockPerms[blockPermDistr(gen)];
+    size_t d = (l == 0 ? 1 : 4);
+    for (size_t i = 0; i < count; i += d) {
         auto tailPerm = RandomTrailingDiagPerm(numLayers, h);
 
-        auto blockPermMatrix = Perm(blockPerm).AsMatGF2();
-        auto matrix = kernel * blockPermMatrix * kernel;
-        auto hasConflict = std::any_of(
-            usedMatrices.begin(), usedMatrices.end(),
-            [&](const NTL::mat_GF2& usedMatrix) {
-                auto diff = NTL::inv(matrix) * usedMatrix;
-                for (size_t i = 0; i < diff.NumRows(); i++) {
-                    for (size_t j = i + 1; j < diff.NumCols(); j++) {
-                        if (NTL::IsOne(diff[i][j])) {
-                            return false;
-                        }
-                    }
+        if (i != 0) {
+            std::vector<size_t> indices(length);
+            for (size_t b = 0; b < length; b += blockSize) {
+                for (size_t j = 0; j < blockSize; j++) {
+                    indices[b + j] = tailPerm[b + j];
                 }
-                return true;
             }
-        );
-
-        if (!hasConflict) {
-            usedMatrices.push_back(std::move(blockPermMatrix));
+            perms.push_back(std::move(indices));
         }
-        else {
-            i--;
+
+        if (l == 0) {
             continue;
         }
-        std::vector<size_t> indices(length);
-        for (size_t b = 0; b < length; b += blockSize) {
-            for (size_t j = 0; j < blockSize; j++) {
-                indices[b + j] = tailPerm[b + blockPerm[j]];
-            }
-        }
 
-        perms.push_back(std::move(indices));
+        for (size_t p = 0; p < 3; p++) {
+            auto& blockPerm = blockPerms[blockPermDistr(gen)];
+            auto blockPermMatrix = Perm(blockPerm).AsMatGF2();
+            auto matrix = kernel * blockPermMatrix * kernel;
+            auto hasConflict = std::any_of(
+                usedMatrices.begin(), usedMatrices.end(),
+                [&](const NTL::mat_GF2& usedMatrix) {
+                    auto diff = NTL::inv(matrix) * usedMatrix;
+                    for (size_t i = 0; i < diff.NumRows(); i++) {
+                        for (size_t j = i + 1; j < diff.NumCols(); j++) {
+                            if (NTL::IsOne(diff[i][j])) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+            );
+
+            if (l == 0 || !hasConflict) {
+                usedMatrices.push_back(std::move(blockPermMatrix));
+            }
+            else {
+                p--;
+                continue;
+            }
+
+            std::vector<size_t> indices(length);
+            for (size_t b = 0; b < length; b += blockSize) {
+                for (size_t j = 0; j < blockSize; j++) {
+                    indices[b + j] = tailPerm[b + blockPerm[j]];
+                }
+            }
+            perms.push_back(std::move(indices));
+        }
     }
 
     return perms;

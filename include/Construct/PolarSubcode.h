@@ -42,7 +42,7 @@ namespace Construct {
         const Codec::PolarCodeSpecification& polarSpec,
         const std::vector<double>& errorProbs,
         const std::vector<Utils::RawPerm>& linearPerms,
-        size_t numDFS_A, size_t numDFS_B, size_t l
+        size_t numDFS_A, size_t numDFS_B
     );
 
     Codec::PolarSubcodeSpecification BuildPlotkinPolarSubcode(
