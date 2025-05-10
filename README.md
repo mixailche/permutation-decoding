@@ -4,7 +4,7 @@ Program implementation of the permutation-based decoder of polar subcodes and th
 
 ## Build
 
-Can be built using either Visual Studio on Windows or CMake on other platforms.
+Can be built using either Visual Studio or CMake.
 
 #### Build via CMake
 
@@ -75,7 +75,7 @@ Usage: `Decoder.exe <arguments>`. Expected arguments:
     + `-dp` - minimum distance between $P$-matrices in the decompositions of distinct permutations used by decoder; integer 
     + `-du` - minimum distance between $U$-matrices; integer
 
-If the value of the `-nperms` argument is greater than the total amount of the permutations equivalence classes, program stucks in an infinite loop.
+If the value of the `-nperms` argument is greater than the total number of the permutations equivalence classes, program stucks in an infinite loop.
 
 #### Example
 ```
