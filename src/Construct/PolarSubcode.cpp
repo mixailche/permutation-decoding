@@ -8,35 +8,29 @@
 #include <unordered_set>
 #include <algorithm>
 
-#include "NTL/GF2E.h"
-#include "NTL/mat_GF2.h"
-#include "NTLHelp.h"
-#include "Utils.hpp"
-#include "Construct/PolarSubcode.h"
-#include "Construct/Perm.hpp"
-#include "Construct/Frozen.h"
+#include "utils/Utils.hpp"
+#include "construct/PolarSubcode.h"
+#include "math/Mathutils.h"
 
-using NTL::GF2E;
-using NTL::GF2X;
-using NTL::GF2;
+using math::GField;
+using math::MatGF2;
+using math::VecGF2;
+using math::Perm;
 
-static NTL::Mat<GF2> BuildExtendedFieldCheckMatrix(const std::vector<size_t> rootDegrees)
+static MatGF2 BuildExtendedFieldCheckMatrix(
+    const GField& field,
+    const std::vector<size_t>& rootDegrees)
 {
-    size_t numDigits = GF2E::degree();
-
-    NTL::mat_GF2 checkMatrix(NTL::INIT_SIZE,
-        numDigits * rootDegrees.size(),
-        NTL::conv<long>(GF2E::cardinality()));
+    size_t numDigits = field.NumDigits();
+    auto checkMatrix = MatGF2::Zeros(numDigits * rootDegrees.size(), field.Size());
 
     for (size_t rowBlock = 0; rowBlock < rootDegrees.size(); rowBlock++) {
-        auto deg = NTL::ZZ(rootDegrees[rowBlock]);
-        
-        for (size_t col = 0; col < checkMatrix.NumCols(); col++) {
-            auto elem = Math::IndexToGF2E(col, numDigits);
-            auto power = NTL::conv<GF2X>(NTL::power(elem, deg));
+        auto deg = rootDegrees[rowBlock];
 
+        for (size_t col = 0; col < checkMatrix.NumCols(); col++) {
+            auto power = field.Pow(col, deg);
             for (size_t i = 0; i < numDigits; i++) {
-                checkMatrix.put(numDigits * rowBlock + i, col, NTL::coeff(power, i));
+                checkMatrix.Set(numDigits * rowBlock + i, col, power & (1ull << i));
             }
         }
     }
@@ -44,106 +38,59 @@ static NTL::Mat<GF2> BuildExtendedFieldCheckMatrix(const std::vector<size_t> roo
     return checkMatrix;
 }
 
-static NTL::Mat<GF2> BuildEbchCheckMatrix(size_t minDist)
+static MatGF2 BuildEBCHCheckMatrix(const GField& field, size_t minDist)
 {
-    return BuildExtendedFieldCheckMatrix(Utils::Iota(minDist - 1));
+    return BuildExtendedFieldCheckMatrix(field, utils::Iota(minDist - 1));
 }
 
-NTL::mat_GF2 Construct::BuildFreezingMatrix(const Codec::PolarSubcodeSpecification& spec)
-{
-    NTL::mat_GF2 freezingMatrix(NTL::INIT_SIZE, spec.Length - spec.Dimension, spec.Length);
-    std::vector<size_t> dynamicFrozenSymbolRows(spec.Length);
-
-    for (size_t i = 0, j = 0; j < spec.Length; i++, j++) {
-        if (spec.StaticFrozen[j]) {
-            freezingMatrix.put(i, j, 1);
-        }
-        else if (spec.Dynamic.Frozen[j]) {
-            freezingMatrix.put(i, j, 1);
-            dynamicFrozenSymbolRows[j] = i;
-        }
-        else {
-            i--;
-        }
-    }
-
-    for (size_t i = 0; i < spec.Length; i++) {
-        for (auto dyn : spec.Dynamic.ForwardEquations[i]) {
-            freezingMatrix[dynamicFrozenSymbolRows[dyn]][i] = 1;
-        }
-    }
-
-    return freezingMatrix;
-}
-
-std::vector<std::vector<size_t>> Construct::BuildDynamicFreezingEquations(
-    const NTL::mat_GF2& freezingMatrix,
-    std::vector<bool>& staticFrozen)
-{
-    std::vector<std::vector<size_t>> equations(staticFrozen.size());
-
-    for (size_t r = 0; r < freezingMatrix.NumRows(); r++) {
-        auto& row = freezingMatrix[r];
-        if (auto end = Math::HighestOnePos(row)) {
-            auto i = *end;
-            auto& equation = equations[i];
-
-            for (size_t j = 0; j < i; j++) {
-                if (NTL::IsOne(row[j])) {
-                    equation.push_back(j);
-                }
-            }
-
-            if (equation.empty()) {
-                staticFrozen[i] = true;
-            }
-        }
-    }
-
-    return equations;
-}
-
-Codec::PolarSubcodeSpecification Construct::BuildEBCHSubcode(size_t numLayers, size_t dimension, size_t minDist, const std::vector<double>& errorProbs)
+codec::PolarSpecification construct::BuildEBCHSubcode(
+    size_t numLayers, size_t dimension, size_t minDist,
+    const math::GField& field,
+    const std::vector<double>& errorProbs)
 {
     auto length = 1ull << numLayers;
-    auto needToFreeze = length - dimension;
-
-    auto checkMatrix = BuildEbchCheckMatrix(minDist);
-    auto kernel = NTL::transpose(Math::BuildArikanKernel(numLayers));
-    auto freezingMatrix = checkMatrix * kernel;
-    auto numDynamicFrozen = Math::RunDoubleGaussianElimination(freezingMatrix);
-
-    if (needToFreeze < numDynamicFrozen) {
-        throw std::invalid_argument("There is not EBCH subcode with the given parameters");
-    }
-    needToFreeze -= numDynamicFrozen;
-
-    Codec::PolarSubcodeSpecification spec(length);
-    spec.Dimension = dimension;
-
-    auto equations = BuildDynamicFreezingEquations(freezingMatrix, spec.StaticFrozen);
-    auto indices = Utils::SortingPerm(errorProbs, std::greater<double>());
+    auto checkMatrix = BuildEBCHCheckMatrix(field, minDist);
+    auto kernel = math::BuildArikanKernel(numLayers);
+    auto freezingMatrix = checkMatrix * kernel.Transpose();
+    freezingMatrix.RunGaussianElimination();
+    codec::PolarSpecification spec(freezingMatrix);
     
+    if (spec.Dimension < dimension) {
+        throw std::invalid_argument("There is no EBCH subcode of given length and dimension");
+    }
+
+    std::vector<std::vector<size_t>> equations(length);
+    for (size_t i = 0; i < length; i++) {
+        for (size_t j : spec.Dynamic.ForwardEquations[i]) {
+            equations[j].push_back(i);
+        }
+    }
+
+    auto indices = utils::SortingPerm(errorProbs, std::greater<double>());
+    if (spec.Dimension < dimension) {
+        throw std::invalid_argument("There is no EBCH subcode of the given parameters");
+    }
+    auto needToFreeze = spec.Dimension - dimension;
+
     for (auto i : indices) {
-        if (spec.StaticFrozen[i] || !equations[i].empty()) {
+        if (spec.StaticFrozen[i] || spec.Dynamic.Frozen[i]) {
             continue;
         }
         if (needToFreeze-- == 0) {
             break;
         }
+        spec.Dimension--;
+        spec.Dynamic.ForwardEquations[i].clear();
         spec.StaticFrozen[i] = true;
     }
 
     for (size_t i = 0; i < length; i++) {
-        for (size_t j : equations[i]) {
-            if (!spec.StaticFrozen[j]) {
-                spec.Dynamic.Frozen[i] = true;
-                spec.Dynamic.ForwardEquations[j].push_back(i);
-            }
-        }
-
-        if (!equations[i].empty() && !spec.Dynamic.Frozen[i]) {
-            // all summands are trivial
+        auto& eq = equations[i];
+        if (spec.Dynamic.Frozen[i] && std::all_of(eq.begin(), eq.end(),
+            [&](size_t j) { return spec.StaticFrozen[j]; }))
+        {
+            spec.Dynamic.ForwardEquations[i].clear();
+            spec.Dynamic.Frozen[i] = false;
             spec.StaticFrozen[i] = true;
         }
     }
@@ -151,256 +98,86 @@ Codec::PolarSubcodeSpecification Construct::BuildEBCHSubcode(size_t numLayers, s
     return spec;
 }
 
-Codec::PolarSubcodeSpecification Construct::BuildAutFriendlyEBCHSubcode(
+codec::PolarSpecification construct::BuildPermFriendlyEBCHSubcode(
     size_t numLayers, size_t dimension, size_t minDist,
+    const GField& field,
     const std::vector<double>& errorProbs,
     const std::vector<size_t>& blockSizes)
 {
-    static std::random_device device;
-    static std::mt19937 gen(device());
-
     auto length = 1ull << numLayers;
-    auto needToFreeze = length - dimension;
+    auto checkMatrix = BuildEBCHCheckMatrix(field, minDist);
+    auto kernel = math::BuildArikanKernel(numLayers);
+    auto freezingMatrix = checkMatrix * kernel.Transpose();
+    freezingMatrix.RunGaussianElimination();
+    codec::PolarSpecification spec(freezingMatrix);
 
-    auto checkMatrix = BuildEbchCheckMatrix(minDist);
-    auto kernel = NTL::transpose(Math::BuildArikanKernel(numLayers));
-    auto freezingMatrix = checkMatrix * kernel;
-    auto numDynamicFrozen = Math::RunDoubleGaussianElimination(freezingMatrix);
-
-    if (needToFreeze < numDynamicFrozen) {
-        throw std::invalid_argument("There is not EBCH subcode with the given parameters");
+    if (spec.Dimension < dimension) {
+        throw std::invalid_argument("There is no EBCH subcode of given length and dimension");
     }
-    needToFreeze -= numDynamicFrozen;
 
-    Codec::PolarSubcodeSpecification spec(length);
-    spec.Dimension = length - numDynamicFrozen;
-    auto equations = Construct::BuildDynamicFreezingEquations(freezingMatrix, spec.StaticFrozen);
-    
-    auto digitPerms = Utils::ListBlockDigitsPermutations(blockSizes);
-    std::vector<std::vector<size_t>> classes;
-    std::vector<size_t> weights;
-    std::vector<double> costs;
+    std::vector<std::vector<size_t>> equations(length);
+    for (size_t i = 0; i < length; i++) {
+        for (size_t j : spec.Dynamic.ForwardEquations[i]) {
+            equations[j].push_back(i);
+        }
+    }
+
+    auto rawPerms = utils::ListBlockDigitsPermutations(blockSizes);
+    std::vector<Perm> perms(rawPerms.size());
+    std::transform(rawPerms.begin(), rawPerms.end(), perms.begin(), Perm::MakeDigits);
+
     std::vector classified(length, false);
-
+    std::vector<std::vector<size_t>> classes;
+    
     for (size_t i = 0; i < length; i++) {
         if (classified[i]) {
             continue;
         }
-        std::vector<size_t> clazz;
-        double cost = 0;
-        for (auto& digitsPerm : digitPerms) {
-            auto perm = Perm::MakeDigits(digitsPerm);
+        std::unordered_set<size_t> clazz;
+        for (const auto& perm : perms) {
             auto j = perm[i];
             classified[j] = true;
-            if (spec.StaticFrozen[j] || !equations[j].empty()) {
-                continue;
-            }
-            cost += std::log(1 - errorProbs[j]);
-            clazz.push_back(j);
-        }
-        costs.push_back(cost);
-        weights.push_back(clazz.size());
-        classes.push_back(std::move(clazz));
-    }
-
-    auto solution = Utils::SolveKnapsackProblem(classes.size(), needToFreeze, weights, costs);
-    for (auto pickedClassIdx : solution) {
-        for (auto i : classes[pickedClassIdx]) {
-            spec.StaticFrozen[i] = true;
-            spec.Dimension--;
-        }
-    }
-
-    for (size_t i = 0; i < length; i++) {
-        for (size_t j : equations[i]) {
-            if (!spec.StaticFrozen[j]) {
-                spec.Dynamic.Frozen[i] = true;
-                spec.Dynamic.ForwardEquations[j].push_back(i);
+            if (!spec.StaticFrozen[j] && !spec.Dynamic.Frozen[j]) {
+                clazz.insert(j);
             }
         }
-
-        if (!equations[i].empty() && !spec.Dynamic.Frozen[i]) {
-            // all summands are trivial
-            spec.StaticFrozen[i] = true;
-        }
+        classes.emplace_back(clazz.begin(), clazz.end());
     }
 
-    return Codec::PolarSubcodeSpecification(freezingMatrix);
-}
+    std::vector<size_t> weights(classes.size());
+    std::transform(classes.begin(), classes.end(), weights.begin(),
+        [](const std::vector<size_t>& clazz) { return clazz.size(); });
 
-// Deprecated
-static Codec::PolarSubcodeSpecification BROKEN_BuildCyclicPolarSubcode(
-    size_t numLayers, size_t dimension,
-    const std::vector<double>& errorProbs)
-{
-    auto length = 1ull << numLayers;
-    std::vector<NTL::mat_GF2> freezingSubmatrices;
-    std::vector<double> costs;
-    std::vector<size_t> weights;
-    std::vector used(length, false);
-
-    for (size_t i = 0; i < length - 1; i++) {
-        if (used[i]) {
-            continue;
-        }
-        used[i] = true;
-        
-        size_t currentElem = i;
-        std::vector<size_t> coset = { currentElem };
-        do {
-            currentElem = (currentElem * 2) % (length - 1);
-            coset.push_back(currentElem);
-            used[currentElem] = true;
-        } while (currentElem != coset.front());
-
-        auto checkMatrix = BuildExtendedFieldCheckMatrix(coset);
-        auto kernel = NTL::transpose(Math::BuildArikanKernel(numLayers));
-        auto freezingMatrix = checkMatrix * kernel;
-        Math::RunDoubleGaussianElimination(freezingMatrix);
-        auto staticFrozen = std::vector(length, false);
-        auto equations = Construct::BuildDynamicFreezingEquations(freezingMatrix, staticFrozen);
-        
-        std::cout << "Coset leader: " << i << std::endl;
-
-        double cost = 0;
-        for (size_t j = 0; j < length; j++) {
-            if (staticFrozen[j] || !equations[j].empty()) {
-                cost += std::log(1 - errorProbs[j]);
-                std::cout << j << std::endl;
-            }
-        }
-        costs.push_back(cost);
-        
-        NTL::vec_vec_GF2 nonZeroRows;
-        for (size_t j = 0; j < freezingMatrix.NumRows(); j++) {
-            auto& row = freezingMatrix[j];
-            if (std::any_of(row.begin(), row.end(), [](GF2 x) { return NTL::IsOne(x); })) {
-                nonZeroRows.append(row);
-            }
-        }
-        weights.push_back(nonZeroRows.length());
-        freezingSubmatrices.push_back(NTL::to_mat_GF2(nonZeroRows));
-
-        std::cout << freezingSubmatrices.back() << std::endl;
-    }
-
-    auto solution = Utils::SolveKnapsackProblem(weights.size(), length - dimension, weights, costs);
-    auto freezingMatrixRows = NTL::vec_vec_GF2();
-    for (auto pickedCosetIdx : solution) {
-        for (size_t i = 0; i < freezingSubmatrices[pickedCosetIdx].NumRows(); i++) {
-            freezingMatrixRows.append(freezingSubmatrices[pickedCosetIdx][i]);
-        }
-    }
-    auto freezingMatrix = NTL::to_mat_GF2(freezingMatrixRows);
-    Math::RunDoubleGaussianElimination(freezingMatrix);
-
-    Codec::PolarSubcodeSpecification spec(length);
-    auto equations = Construct::BuildDynamicFreezingEquations(freezingMatrix, spec.StaticFrozen);
-    for (size_t i = 0; i < length; i++) {
-        for (auto j : equations[i]) {
-            spec.Dynamic.Frozen[i] = true;
-            spec.Dynamic.ForwardEquations[j].push_back(i);
-        }
-    }
-
-    spec.Dimension =
-        std::count(spec.StaticFrozen.begin(), spec.StaticFrozen.end(), false) -
-        std::count(spec.Dynamic.Frozen.begin(), spec.Dynamic.Frozen.end(), true);
-
-    return spec;
-}
-
-Codec::PolarSubcodeSpecification Construct::BuildCyclicPolarSubcode(
-    size_t numLayers, size_t dimension,
-    const std::vector<double>& errorProbs)
-{
-    auto length = 1ull << numLayers;
-    std::vector<NTL::mat_GF2> freezingSubmatrices;
-    std::vector<double> costs;
-    std::vector<size_t> weights;
-    std::vector usedElem(length, false);
-
-    for (size_t i = 0; i < length - 1; i++) {
-        if (usedElem[i]) {
-            continue;
-        }
-        usedElem[i] = true;
-
-        size_t currentElem = i;
-        std::vector<size_t> coset = { currentElem };
-        do {
-            currentElem = (currentElem * 2) % (length - 1);
-            coset.push_back(currentElem);
-            usedElem[currentElem] = true;
-        } while (currentElem != coset.front());
-
-        auto checkMatrix = BuildExtendedFieldCheckMatrix(coset);
-        auto kernel = NTL::transpose(Math::BuildArikanKernel(numLayers));
-        auto freezingMatrix = checkMatrix * kernel;
-        Math::RunDoubleGaussianElimination(freezingMatrix);
-
-        NTL::vec_vec_GF2 nonZeroRows;
-        for (size_t j = 0; j < freezingMatrix.NumRows(); j++) {
-            auto& row = freezingMatrix[j];
-            if (std::any_of(row.begin(), row.end(), [](GF2 x) { return NTL::IsOne(x); })) {
-                nonZeroRows.append(row);
-            }
-        }
-        freezingSubmatrices.push_back(NTL::to_mat_GF2(nonZeroRows));
-    }
-
-    NTL::mat_GF2 freezingMatrix(NTL::INIT_SIZE, 0, length);
-    std::vector usedCoset(freezingSubmatrices.size(), false);
-
-    while (freezingMatrix.NumRows() < length - dimension) {
-        auto currentNumRows = freezingMatrix.NumRows();
-        double bestCost = std::numeric_limits<double>::max();
-        NTL::mat_GF2 newFreezingMatrix;
-        size_t pickedCosetIdx = -1;
-
-        for (size_t i = 0; i < freezingSubmatrices.size(); i++) {
-            if (usedCoset[i]) {
-                continue;
-            }
-
-            auto& submatrix = freezingSubmatrices[i];
-            NTL::mat_GF2 forkMatrix = freezingMatrix;
-
-            forkMatrix.SetDims(currentNumRows + submatrix.NumRows(), length);
-            for (size_t r = 0; r < submatrix.NumRows(); r++) {
-                for (size_t c = 0; c < length; c++) {
-                    forkMatrix[currentNumRows + r][c] = submatrix[r][c];
-                }
-            }
-
+    std::vector<double> costs(classes.size());
+    std::transform(classes.begin(), classes.end(), costs.begin(),
+        [&](const std::vector<size_t>& clazz) {
             double cost = 0;
-            Math::RunDoubleGaussianElimination(forkMatrix);
-            for (size_t r = 0; r < forkMatrix.NumRows(); r++) {
-                if (auto end = Math::HighestOnePos(forkMatrix[r])) {
-                    cost += std::log(1 - errorProbs[*end]);
-                }
+            for (size_t i : clazz) {
+                cost += std::log(1 - errorProbs[i]);
             }
+            return cost;
+        });
 
-            if (cost < bestCost) {
-                bestCost = cost;
-                newFreezingMatrix = forkMatrix;
-                pickedCosetIdx = i;
-            }
+    auto needToFreeze = spec.Dimension - dimension;
+    auto solution = utils::SolveKnapsackProblem(classes.size(), needToFreeze, weights, costs);
+    for (auto pickedClassIdx : solution) {
+        for (size_t i : classes[pickedClassIdx]) {
+            spec.Dimension--;
+            spec.Dynamic.ForwardEquations[i].clear();
+            spec.StaticFrozen[i] = true;
         }
-
-        usedCoset[pickedCosetIdx] = true;
-        freezingMatrix = std::move(newFreezingMatrix);
     }
 
-    Codec::PolarSubcodeSpecification spec(length);
-    auto equations = BuildDynamicFreezingEquations(freezingMatrix, spec.StaticFrozen);
     for (size_t i = 0; i < length; i++) {
-        for (auto j : equations[i]) {
-            spec.Dynamic.Frozen[i] = true;
-            spec.Dynamic.ForwardEquations[j].push_back(i);
+        auto& eq = equations[i];
+        if (spec.Dynamic.Frozen[i] && std::all_of(eq.begin(), eq.end(),
+            [&](size_t j) { return spec.StaticFrozen[j]; }))
+        {
+            spec.Dynamic.ForwardEquations[i].clear();
+            spec.Dynamic.Frozen[i] = false;
+            spec.StaticFrozen[i] = true;
         }
     }
-    spec.Dimension = length - freezingMatrix.NumRows();
 
     return spec;
 }
@@ -416,24 +193,19 @@ static size_t ApplyDigitsPerm(const std::vector<size_t>& perm, size_t number)
     return result;
 }
 
-Codec::PolarSubcodeSpecification Construct::BuildRandomizedPolarSubcode(
-    const Codec::PolarCodeSpecification& polarSpec,
+codec::PolarSpecification construct::BuildRandomizedPolarSubcode(
+    const std::vector<bool>& baseCodeFrozenSymbols,
     const std::vector<double>& errorProbs, size_t numDFS_A, size_t numDFS_B)
 {
-    static std::random_device device;
-    static std::mt19937 gen(device());
-    static std::uniform_int_distribution distr(0, 1);
+    auto length = baseCodeFrozenSymbols.size();
+    auto dimension = std::count(baseCodeFrozenSymbols.begin(), baseCodeFrozenSymbols.end(), false);
 
-    if (polarSpec.Dimension <= numDFS_A) {
-        throw std::invalid_argument("Cannot apply type-A DFC");
-    }
-
-    Codec::PolarSubcodeSpecification spec(polarSpec.Length);
-    spec.Dimension = polarSpec.Dimension - numDFS_A;
+    codec::PolarSpecification spec(length);
+    spec.Dimension = dimension - numDFS_A;
 
     std::vector<size_t> unfrozen, frozen;
-    for (size_t i = 0; i < spec.Length; i++) {
-        if (polarSpec.Frozen[i]) {
+    for (size_t i = 0; i < length; i++) {
+        if (baseCodeFrozenSymbols[i]) {
             frozen.push_back(i);
             spec.StaticFrozen[i] = true;
         }
@@ -446,7 +218,7 @@ Codec::PolarSubcodeSpecification Construct::BuildRandomizedPolarSubcode(
         std::vector<size_t> equation;
 
         for (size_t j = 0; j < i; j++) {
-            if (!polarSpec.Frozen[j] && distr(gen)) {
+            if (!spec.StaticFrozen[j] && !spec.Dynamic.Frozen[j] && utils::RandomGF2()) {
                 equation.push_back(j);
             }
         }
@@ -460,8 +232,8 @@ Codec::PolarSubcodeSpecification Construct::BuildRandomizedPolarSubcode(
     };
 
     std::sort(unfrozen.begin(), unfrozen.end(), [](size_t i, size_t j) {
-        auto wLeft = Utils::HammingWeight(i);
-        auto wRight = Utils::HammingWeight(j);
+        auto wLeft = utils::HammingWeight(i);
+        auto wRight = utils::HammingWeight(j);
         return wLeft < wRight || wLeft == wRight && i > j;
     });
     std::sort(frozen.begin(), frozen.end(), [&](size_t i, size_t j) {
@@ -474,26 +246,21 @@ Codec::PolarSubcodeSpecification Construct::BuildRandomizedPolarSubcode(
     return spec;
 }
 
-Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubcode(
-    const Codec::PolarCodeSpecification& polarSpec,
+codec::PolarSpecification construct::BuildPermFriendlyRandomizedPolarSubcode(
+    const std::vector<bool>& baseCodeFrozenSymbols,
     const std::vector<double>& errorProbs,
-    const std::vector<Utils::RawPerm>& linearPerms,
+    const std::vector<utils::RawPerm>& linearPerms,
     size_t numDFS_A, size_t numDFS_B)
 {
-    static std::random_device device;
-    static std::mt19937 gen(device());
-    static std::uniform_int_distribution distr(0, 1);
+    auto length = baseCodeFrozenSymbols.size();
+    auto dimension = std::count(baseCodeFrozenSymbols.begin(), baseCodeFrozenSymbols.end(), false);
 
-    if (polarSpec.Dimension <= numDFS_A) {
-        throw std::invalid_argument("Cannot apply type-A DFC");
-    }
-
-    Codec::PolarSubcodeSpecification spec(polarSpec.Length);
-    spec.Dimension = polarSpec.Dimension - numDFS_A;
+    codec::PolarSpecification spec(length);
+    spec.Dimension = dimension - numDFS_A;
 
     std::vector<size_t> unfrozen, frozen;
     for (size_t i = 0; i < spec.Length; i++) {
-        if (polarSpec.Frozen[i]) {
+        if (baseCodeFrozenSymbols[i]) {
             frozen.push_back(i);
             spec.StaticFrozen[i] = true;
         }
@@ -506,8 +273,8 @@ Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubc
         std::vector<size_t> equation;
 
         for (size_t j = 0; j < i; j++) {
-            if (!polarSpec.Frozen[j] && distr(gen) &&
-                std::all_of(linearPerms.begin(), linearPerms.end(), [&](const auto& perm) {
+            if (!spec.StaticFrozen[j] && !spec.Dynamic.Frozen[j] && utils::RandomGF2()
+                && std::all_of(linearPerms.begin(), linearPerms.end(), [&](const auto& perm) {
                     return ApplyDigitsPerm(perm, j) < ApplyDigitsPerm(perm, i);
                 })) {
                 equation.push_back(j);
@@ -523,8 +290,8 @@ Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubc
     };
 
     std::sort(unfrozen.begin(), unfrozen.end(), [](size_t i, size_t j) {
-        auto wLeft = Utils::HammingWeight(i);
-        auto wRight = Utils::HammingWeight(j);
+        auto wLeft = utils::HammingWeight(i);
+        auto wRight = utils::HammingWeight(j);
         return wLeft < wRight || wLeft == wRight && i > j;
     });
     std::sort(frozen.begin(), frozen.end(), [&](size_t i, size_t j) {
@@ -537,9 +304,9 @@ Codec::PolarSubcodeSpecification Construct::BuildPermFriendlyRandomizedPolarSubc
     return spec;
 }
 
-Codec::PolarSubcodeSpecification Construct::BuildPlotkinPolarSubcode(
-    const Codec::PolarSubcodeSpecification& code1,
-    const Codec::PolarSubcodeSpecification& code2)
+codec::PolarSpecification construct::BuildPlotkinPolarSubcode(
+    const codec::PolarSpecification& code1,
+    const codec::PolarSpecification& code2)
 {
     if (code1.Length != code2.Length) {
         throw std::invalid_argument("Codes must be of an equal length");
@@ -559,7 +326,7 @@ Codec::PolarSubcodeSpecification Construct::BuildPlotkinPolarSubcode(
         }
     }
 
-    Codec::PolarSubcodeSpecification spec(length);
+    codec::PolarSpecification spec(length);
     spec.Dimension = code1.Dimension + code2.Dimension;
 
     for (size_t i = 0; i < half; i++) {
