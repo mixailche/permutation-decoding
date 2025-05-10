@@ -20,44 +20,6 @@
 #include "running/ArgsReader.hpp"
 #include "running/Simulate.hpp"
 
-class ArgsReader1 {
-public:
-    ArgsReader1(int argc, char** argv);
-
-    std::optional<std::string> Read();
-    std::optional<std::pair<std::string, std::string>> ReadNamed();
-
-private:
-    const size_t mNumArgs;
-    char** mArgs;
-    size_t mIndex;
-};
-
-ArgsReader1::ArgsReader1(int argc, char** argv)
-    : mNumArgs(argc)
-    , mArgs(argv)
-    , mIndex(1)
-{}
-
-std::optional<std::string> ArgsReader1::Read()
-{
-    if (mIndex == mNumArgs) {
-        return std::nullopt;
-    }
-    return mArgs[mIndex++];
-}
-
-std::optional<std::pair<std::string, std::string>> ArgsReader1::ReadNamed()
-{
-    auto name = Read();
-    auto value = Read();
-
-    if (name && value && !name->empty() && name->at(0) == '-') {
-        return std::make_pair(name->substr(1), value.value());
-    }
-    return std::nullopt;
-}
-
 static codec::PolarSpecification ReadSpecification(std::istream& istr)
 {
     size_t length, numSymbols;
@@ -150,26 +112,6 @@ static running::SimulationResult RunSimulator(
     else {
         throw std::invalid_argument("Unkown algorithm");
     }
-}
-
-static void PrintWeightsDistr(const codec::PolarSpecification& spec)
-{
-    auto numLayers = utils::IntLog2(spec.Length);
-    auto length = spec.Length;
-
-    std::vector<size_t> weights(numLayers + 1);
-
-    for (size_t i = 0; i < length; i++) {
-        if (spec.StaticFrozen[i] || spec.Dynamic.Frozen[i]) {
-            weights[math::IndexToVecGF2(i, numLayers).HammingWeight()]++;
-        }
-    }
-
-    for (size_t w = 0; w <= numLayers; w++) {
-        std::cout << w << " -> " << weights[w] << "\n";
-    }
-
-    std::cout << std::endl;
 }
 
 // Usage: Decoder.exe <parameters>
