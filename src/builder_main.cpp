@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <fstream>
+#include <array>
 
 #include "construct/FrozenSet.h"
 #include "construct/PolarSubcode.h"
@@ -31,15 +32,42 @@ static std::ostream& operator<<(std::ostream& ostr, const codec::PolarSpecificat
     return ostr;
 }
 
+static constexpr size_t Poly(const std::vector<size_t>& degrees)
+{
+    size_t mask = 0;
+    for (size_t deg : degrees) {
+        mask |= 1ull << deg;
+    }
+    return mask;
+}
+
 static codec::PolarSpecification BuildPolarSubcode(
     size_t numLayers, size_t dimension,
     const std::vector<double>& errorProbs,
     const running::ArgsReader& reader)
 {
+    static constexpr std::array<size_t, 15> primitivePolynomials = {
+        /* GF(2^2): x^2+x+1 */            Poly({ 2, 1, 0 }),
+        /* GF(2^3): x^3+x+1 */            Poly({ 3, 1, 0 }),
+        /* GF(2^4): x^4+x+1 */            Poly({ 4, 1, 0 }),
+        /* GF(2^5): x^5+x^2+1 */          Poly({ 5, 2, 0 }),
+        /* GF(2^6): x^6+x+1 */            Poly({ 6, 1, 0 }),
+        /* GF(2^7): x^7+x^3+1 */          Poly({ 7, 3, 0 }),
+        /* GF(2^8): x^8+x^4+x^3+x^2+1 */  Poly({ 8, 4, 3, 2, 0 }),
+        /* GF(2^9): x^9+x^4+1 */          Poly({ 9, 4, 1 }),
+        /* GF(2^10): x^10+x^3+1 */        Poly({ 10, 3, 0 }),
+        /* GF(2^11): x^11+x^2+1 */        Poly({ 11, 2, 0 }),
+        /* GF(2^12): x^12+x^6+x^4+x+1 */  Poly({ 12, 6, 4, 1, 0 }),
+        /* GF(2^13): x^13+x^4+x^3+x+1 */  Poly({ 13, 4, 3, 1, 0 }),
+        /* GF(2^14): x^14+x^10+x^6+x+1 */ Poly({ 14, 10, 6, 1, 0 }),
+        /* GF(2^15): x^15+x+1 */          Poly({ 15, 1, 0 }),
+        /* GF(2^16): x^16+x^12+x^3+x+1 */ Poly({ 16, 12, 3, 1, 0 })
+    };
+
     auto code = reader.GetStringArg("code");
 
     if (code == "ebch") {
-        auto field = math::GField(reader.GetNumberArg("mod"));
+        auto field = math::GField(primitivePolynomials[numLayers - 2]);
         auto minDist = reader.GetNumberArg("d");
         return construct::BuildEBCHSubcode(numLayers, dimension, minDist, field, errorProbs);
     }
@@ -66,7 +94,7 @@ static codec::PolarSpecification BuildPolarSubcode(
 }
 
 // Usage: Builder.exe <options>
-// -out -code -a -b -d -len -dim -BEC -gauss -blocks -mod
+// -out -code -a -b -d -len -dim -BEC -gauss -blocks
 // -code: rand, rand-perm, ebch
 int main(int argc, char** argv)
 {

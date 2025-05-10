@@ -129,9 +129,12 @@ int main(int argc, char** argv)
 
     try {
         codec::PolarSpecification spec;
-        {
-            std::ifstream specStrm(reader.GetStringArg("spec"));
+        if (auto specStrm = std::ifstream(reader.GetStringArg("spec"))) {
             spec = ReadSpecification(specStrm);
+        }
+        else {
+            std::cout << "Cannot open specification file\n";
+            return 1;
         }
 
         auto result = RunSimulator(reader, spec);
