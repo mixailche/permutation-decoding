@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source files\codec">
+      <UniqueIdentifier>{8d708cb8-9c61-4edb-959c-fadb41a3c3b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\construct">
+      <UniqueIdentifier>{b70df0f3-6722-4328-933d-21a37d401ab7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\math">
+      <UniqueIdentifier>{f5f9fd24-6afb-48e4-bd3d-6d22b0e5a4d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\utils">
+      <UniqueIdentifier>{ec741f23-7ca3-443d-ae54-39a50417b727}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header files\codec">
+      <UniqueIdentifier>{032d2952-cc17-46c5-a079-199dca2a68f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\construct">
+      <UniqueIdentifier>{2cc0638c-d317-4499-b0b4-da1391cddc61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\math">
+      <UniqueIdentifier>{a79453f8-6763-4582-a6fa-ef4436593e33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\utils">
+      <UniqueIdentifier>{065e40da-6e31-4dbf-904d-c2622ef572c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\running">
+      <UniqueIdentifier>{260e10ff-f2f6-4b97-b4de-f2661229f994}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\codec\AutDecoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\codec\PolarEncoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\codec\PolarSpecification.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\codec\SCDecoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\codec\SCLDecoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\codec\PermSCDecoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\codec\PermSCLDecoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\construct\FrozenSet.cpp">
+      <Filter>Source files\construct</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\construct\PermSet.cpp">
+      <Filter>Source files\construct</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\math\GField.cpp">
+      <Filter>Source files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\math\MatGF2.cpp">
+      <Filter>Source files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\math\MathUtils.cpp">
+      <Filter>Source files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\math\Perm.cpp">
+      <Filter>Source files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\math\VecGF2.cpp">
+      <Filter>Source files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utils\Utils.cpp">
+      <Filter>Source files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\running\ArgsReader.cpp">
+      <Filter>Header files\running</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\construct\PolarSubcode.cpp">
+      <Filter>Source files\construct</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\utils\Utils.hpp">
+      <Filter>Header files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\math\GField.h">
+      <Filter>Header files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\math\MatGF2.h">
+      <Filter>Header files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\math\MathUtils.h">
+      <Filter>Header files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\math\Perm.hpp">
+      <Filter>Header files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\math\VecGF2.h">
+      <Filter>Header files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\construct\FrozenSet.h">
+      <Filter>Header files\construct</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\construct\PermSet.h">
+      <Filter>Header files\construct</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\construct\PolarSubcode.h">
+      <Filter>Header files\construct</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\AutDecoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\Decoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\PermSCDecoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\PermSCLDecoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\PolarEncoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\PolarSpecification.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\SCDecoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\SCLDecoder.h">
+      <Filter>Header files\codec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\running\ArgsReader.hpp">
+      <Filter>Header files\running</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
