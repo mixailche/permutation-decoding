@@ -40,7 +40,7 @@ std::vector<T> math::Perm::ApplyDirect(const std::vector<T>& vec) const
     std::vector<T> result(vec.size());
 
     for (size_t i = 0; i < vec.size(); i++) {
-        result[i] = vec[this->operator[](i)];
+        result[this->operator[](i)] = vec[i];
     }
 
     return result;
@@ -52,7 +52,7 @@ std::vector<T> math::Perm::ApplyReversed(const std::vector<T>& vec) const
     std::vector<T> result(vec.size());
 
     for (size_t i = 0; i < vec.size(); i++) {
-        result[this->operator[](i)] = vec[i];
+        result[i] = vec[this->operator[](i)];
     }
 
     return result;

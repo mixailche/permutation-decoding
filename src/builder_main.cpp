@@ -71,13 +71,21 @@ static codec::PolarSpecification BuildPolarSubcode(
         auto minDist = reader.GetNumberArg("d");
         return construct::BuildEBCHSubcode(numLayers, dimension, minDist, field, errorProbs);
     }
-    if (code == "rand") {
+    else if (code == "ebch-perm") {
+        auto field = math::GField(primitivePolynomials[numLayers - 2]);
+        auto minDist = reader.GetNumberArg("d");
+        auto blockSizes = reader.GetNumberListArg("blocks");
+        return construct::BuildPermFriendlyEBCHSubcode(
+            numLayers, dimension, minDist, field, errorProbs, blockSizes
+        );
+    }
+    else if (code == "rand") {
         auto numDFS_A = reader.GetNumberArg("a");
         auto numDFS_B = reader.GetNumberArg("b");
         auto base = construct::BuildFrozenSet(errorProbs, dimension + numDFS_A);
         return construct::BuildRandomizedPolarSubcode(base, errorProbs, numDFS_A, numDFS_B);
     }
-    if (code == "rand-perm") {
+    else if (code == "rand-perm") {
         auto numDFS_A = reader.GetNumberArg("a");
         auto numDFS_B = reader.GetNumberArg("b");
         auto blockSizes = reader.GetNumberListArg("blocks");
@@ -89,13 +97,14 @@ static codec::PolarSpecification BuildPolarSubcode(
             base, errorProbs, linearPerms, numDFS_A, numDFS_B
         );
     }
-
-    throw std::invalid_argument("Unknown code cunstruction: `" + code + "`");
+    else {
+        throw std::invalid_argument("Unknown code cunstruction: `" + code + "`");
+    }
 }
 
 // Usage: Builder.exe <options>
 // -out -code -a -b -d -len -dim -BEC -gauss -blocks
-// -code: rand, rand-perm, ebch
+// -code: rand, rand-perm, ebch, ebch-perm
 int main(int argc, char** argv)
 {
     running::ArgsReader reader(argc, argv);

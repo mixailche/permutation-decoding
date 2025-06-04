@@ -12,7 +12,7 @@
 #include "codec/SCDecoder.h"
 #include "codec/PermSCDecoder.h"
 #include "codec/PermSCLDecoder.h"
-
+#include "codec/CRCPermSCLDecoder.h"
 #include "math/MathUtils.h"
 #include "math/MatGF2.h"
 #include "math/GField.h"
@@ -35,8 +35,7 @@ static codec::PolarSpecification ReadSpecification(std::istream& istr)
         throw;
     }
 
-    size_t numFrozen;
-    for (numFrozen = 0; istr >> numSymbols; numFrozen++) {
+    while (istr >> numSymbols) {
         std::vector<size_t> equation(numSymbols);
         for (size_t i = 0; i < numSymbols; i++) {
             istr >> equation[i];
@@ -91,8 +90,8 @@ static running::SimulationResult RunSimulator(
         callbackPeriod
     };
 
-    auto RunWithDecoder = [&](const codec::Decoder& decoder) {
-        return running::Simulate(&spec, decoder, options, PrintErrorRate);
+    auto RunWithDecoder = [&](const codec::Decoder& decoder, const std::vector<bool>& crcGenerator = {}) {
+        return running::Simulate(&spec, decoder, options, PrintErrorRate, crcGenerator);
     };
 
     auto algorithm = reader.GetStringArg("alg");
@@ -109,18 +108,51 @@ static running::SimulationResult RunSimulator(
     else if (algorithm == "perm-scl") {
         return RunWithDecoder(codec::PermSCLDecoder(spec, BuildPerms(), reader.GetNumberArg("L")));
     }
+    else if (algorithm == "crc-perm-scl") {
+        auto rawCrcGenerator = reader.GetNumberListArg("crc");
+        std::vector<bool> crcGenerator(rawCrcGenerator.size());
+        std::transform(rawCrcGenerator.begin(), rawCrcGenerator.end(), crcGenerator.begin(),
+            [](size_t x) -> bool { return x; });
+        return RunWithDecoder(codec::CRCPermSCLDecoder(spec, crcGenerator, BuildPerms(), reader.GetNumberArg("L")), crcGenerator);
+    }
     else {
         throw std::invalid_argument("Unkown algorithm");
     }
 }
 
 // Usage: Decoder.exe <parameters>
-// -spec -alg -snr -iter -errors -periods -L -du -dp -nperms
-
+// -spec -alg -snr -iter -errors -period -L -du -dp -nperms -blocks
 int main(int argc, char** argv)
 {
+    /*
+    static auto PrintErrorRate = [](size_t numIterations, size_t numErrors) {
+        double fer = static_cast<double>(numErrors) / numIterations;
+        std::cout << "steps=" << numIterations
+            << ", errors=" << numErrors
+            << ", FER=" << std::setprecision(5) << std::scientific << fer
+            << "\n";
+    };
+
+    std::vector<bool> crcGenerator = { 1, 1, 0, 0, 0, 0, 1 };
+    std::vector<size_t> blockSizes = { 3, 5 };
+    auto errorProbs = construct::DensityEvolutionGA(8, 2.0);
+
+    codec::PolarSpecification spec;
+    spec.StaticFrozen = construct::BuildFrozenSet_AutomorphismInvariant(8, 134, blockSizes, errorProbs);
+    std::cout << std::count(spec.StaticFrozen.begin(), spec.StaticFrozen.end(), false) << "\n";
+    spec.Length = 256;
+    spec.Dimension = std::count(spec.StaticFrozen.begin(), spec.StaticFrozen.end(), false);
+    spec.Dynamic.Frozen.assign(256, false);
+    spec.Dynamic.ForwardEquations.resize(256);
+
+    auto perms = construct::BuildBLTAPermSet(32, 8, 3, 4, blockSizes);
+    codec::CRCPermSCLDecoder decoder(spec, crcGenerator, perms, 1);
+    //codec::PermSCDecoder decoder(spec, perms);
+
+    running::Simulate(&spec, decoder, { 2.5, 1000000, 100, 100 }, PrintErrorRate, crcGenerator);
+    */
     running::ArgsReader reader(argc, argv, {
-        { "iter", "1000000" },
+        { "iter", "10000000" },
         { "errors", "100" },
         { "period", "100" },
         { "du", "0" },

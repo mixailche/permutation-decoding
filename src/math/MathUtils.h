@@ -20,6 +20,8 @@ namespace math {
     std::ostream& operator<<(std::ostream& ostr, const MatGF2& mat);
     std::ostream& operator<<(std::ostream& ostr, const VecGF2& vec);
 
+    std::vector<bool> CalculateCRC(const std::vector<bool>& vec, const std::vector<bool>& generator);
+
     MatGF2 BuildArikanKernel(size_t numLayers);
     
     MatGF2 TransformFreezingMatrix(const MatGF2& freezingMatrix, const MatGF2& permMatrix);

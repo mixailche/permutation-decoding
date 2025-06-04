@@ -5,6 +5,7 @@
 #include "codec/PolarSpecification.h"
 #include "codec/PolarEncoder.h"
 #include "codec/Decoder.h"
+#include "math/MathUtils.h"
 #include "utils/Utils.hpp"
 
 namespace running {
@@ -26,14 +27,16 @@ namespace running {
     template <typename Callback>
     SimulationResult Simulate(
         const codec::PolarSpecification* pSpec, const codec::Decoder& decoder,
-        SimulationOptions opt, Callback callback)
+        SimulationOptions opt, Callback callback, const std::vector<bool> crcGenerator = {})
     {
         static std::random_device device;
         static std::mt19937 gen(device());
         static std::uniform_int_distribution<int> symbolDistr(0, 1);
         static auto generateSymbol = [] { return symbolDistr(gen); };
 
-        auto stddev = std::pow(10.0, -opt.SignalNoiseRatio / 20);
+        auto numCRCBits = crcGenerator.empty() ? 0 : crcGenerator.size() - 1;
+        auto rate = static_cast<double>(pSpec->Dimension - numCRCBits) / pSpec->Length;
+        auto stddev = std::pow(10.0, -opt.SignalNoiseRatio / 20) / std::sqrt(2 * rate);
         auto variance = stddev * stddev;
         std::normal_distribution<double> noiseDistr(0, stddev);
 
@@ -42,7 +45,7 @@ namespace running {
             return -2 * x / variance;
         };
 
-        std::vector<bool> symbols(pSpec->Dimension);
+        std::vector<bool> infVector;
         std::vector<double> received(pSpec->Length);
 
         codec::PolarEncoder encoder(pSpec);
@@ -50,8 +53,16 @@ namespace running {
         size_t numErrors = 0, numIterations;
 
         for (numIterations = 0; numIterations < opt.MaxIterations; numIterations++) {
-            std::generate(symbols.begin(), symbols.end(), generateSymbol);
-            auto codeword = encoder.Encode(symbols);
+            infVector.resize(pSpec->Dimension - numCRCBits);
+            std::generate(infVector.begin(), infVector.end(), generateSymbol);
+
+            std::vector<bool> crc;
+            if (!crcGenerator.empty()) {
+                crc = math::CalculateCRC(infVector, crcGenerator);
+            }
+
+            infVector.insert(infVector.end(), crc.begin(), crc.end());
+            auto codeword = encoder.Encode(infVector);
 
             std::transform(codeword.begin(), codeword.end(), received.begin(), simulateNoise);
             auto decoded = decoder.Decode(received);

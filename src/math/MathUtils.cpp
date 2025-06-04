@@ -76,6 +76,41 @@ std::ostream& math::operator<<(std::ostream& ostr, const VecGF2& vec)
     return ostr << "]";
 }
 
+std::vector<bool> math::CalculateCRC(const std::vector<bool>& vec, const std::vector<bool>& mod)
+{
+    VecGF2 remainder(vec);
+    VecGF2 generator(mod);
+
+    auto leftEnd = remainder.End();
+    if (!leftEnd) {
+        // zero vector
+        return std::vector(generator.Dimension() - 1, false);
+    }
+
+    auto rightEnd = generator.End();
+    if (!rightEnd) {
+        throw std::invalid_argument("Got zero generator polynomial for CRC");
+    }
+
+    auto leftDeg = leftEnd.value();
+    auto rightDeg = rightEnd.value();
+    
+    while (leftDeg >= rightDeg) {
+        VecGF2 delta(remainder.Dimension(), 0);
+        for (size_t i = leftDeg - rightDeg; i <= leftDeg; i++) {
+            delta.Set(i, generator[i - leftDeg + rightDeg]);
+        }
+        remainder += delta;
+        leftDeg = remainder.End().value_or(0);
+    }
+
+    std::vector<bool> result(generator.Dimension() - 1, 0);
+    for (size_t i = 0; i < result.size(); i++) {
+        result[i] = remainder[i];
+    }
+    return result;
+}
+
 static std::vector<std::vector<bool>> BuildArikanKernelElems(size_t nLayers)
 {
     if (nLayers == 0) {

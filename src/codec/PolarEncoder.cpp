@@ -1,6 +1,10 @@
 #include <algorithm>
 #include <vector>
 
+#include "math/MatGF2.h"
+#include "math/VecGF2.h"
+#include "math/MathUtils.h"
+#include "utils/Utils.hpp"
 #include "PolarEncoder.h"
 
 using codec::PolarEncoder;
@@ -47,6 +51,14 @@ std::vector<bool> PolarEncoder::Encode(const std::vector<bool>& infVector) const
     }
 
     Polarize(codeword.begin(), codeword.end());
+    /*math::VecGF2 vec(std::move(codeword));
+    auto kernel = math::BuildArikanKernel(utils::IntLog2(mSpec->Length));
+    auto polarized = kernel.Transpose() * vec;
 
+    std::vector<bool> result(mSpec->Length);
+    for (size_t i = 0; i < mSpec->Length; i++) {
+        result[i] = polarized[i];
+    }
+    return result;*/
     return codeword;
 }
