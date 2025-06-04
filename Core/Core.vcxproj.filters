@@ -89,6 +89,9 @@
     <ClCompile Include="..\src\construct\PolarSubcode.cpp">
       <Filter>Source files\construct</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\codec\CRCPermSCLDecoder.cpp">
+      <Filter>Source files\codec</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\utils\Utils.hpp">
@@ -144,6 +147,9 @@
     </ClInclude>
     <ClInclude Include="..\src\running\ArgsReader.hpp">
       <Filter>Header files\running</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\codec\CRCPermSCLDecoder.h">
+      <Filter>Header files\codec</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

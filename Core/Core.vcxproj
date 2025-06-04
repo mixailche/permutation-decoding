@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\codec\AutDecoder.cpp" />
+    <ClCompile Include="..\src\codec\CRCPermSCLDecoder.cpp" />
     <ClCompile Include="..\src\codec\PermSCDecoder.cpp" />
     <ClCompile Include="..\src\codec\PermSCLDecoder.cpp" />
     <ClCompile Include="..\src\codec\PolarEncoder.cpp" />
@@ -39,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\codec\AutDecoder.h" />
+    <ClInclude Include="..\src\codec\CRCPermSCLDecoder.h" />
     <ClInclude Include="..\src\codec\Decoder.h" />
     <ClInclude Include="..\src\codec\PermSCDecoder.h" />
     <ClInclude Include="..\src\codec\PermSCLDecoder.h" />
