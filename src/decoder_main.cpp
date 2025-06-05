@@ -124,33 +124,6 @@ static running::SimulationResult RunSimulator(
 // -spec -alg -snr -iter -errors -period -L -du -dp -nperms -blocks
 int main(int argc, char** argv)
 {
-    /*
-    static auto PrintErrorRate = [](size_t numIterations, size_t numErrors) {
-        double fer = static_cast<double>(numErrors) / numIterations;
-        std::cout << "steps=" << numIterations
-            << ", errors=" << numErrors
-            << ", FER=" << std::setprecision(5) << std::scientific << fer
-            << "\n";
-    };
-
-    std::vector<bool> crcGenerator = { 1, 1, 0, 0, 0, 0, 1 };
-    std::vector<size_t> blockSizes = { 3, 5 };
-    auto errorProbs = construct::DensityEvolutionGA(8, 2.0);
-
-    codec::PolarSpecification spec;
-    spec.StaticFrozen = construct::BuildFrozenSet_AutomorphismInvariant(8, 134, blockSizes, errorProbs);
-    std::cout << std::count(spec.StaticFrozen.begin(), spec.StaticFrozen.end(), false) << "\n";
-    spec.Length = 256;
-    spec.Dimension = std::count(spec.StaticFrozen.begin(), spec.StaticFrozen.end(), false);
-    spec.Dynamic.Frozen.assign(256, false);
-    spec.Dynamic.ForwardEquations.resize(256);
-
-    auto perms = construct::BuildBLTAPermSet(32, 8, 3, 4, blockSizes);
-    codec::CRCPermSCLDecoder decoder(spec, crcGenerator, perms, 1);
-    //codec::PermSCDecoder decoder(spec, perms);
-
-    running::Simulate(&spec, decoder, { 2.5, 1000000, 100, 100 }, PrintErrorRate, crcGenerator);
-    */
     running::ArgsReader reader(argc, argv, {
         { "iter", "10000000" },
         { "errors", "100" },
