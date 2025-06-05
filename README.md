@@ -1,6 +1,6 @@
 # Permutation decoding of polar subcodes
 
-Program implementation of the permutation-based decoder of polar subcodes and the builder of polar subcodes for permutation decoding with Arikan kernel. Currently supports polar EBCH subcodes and a randomized construction. Supported decoding algorithms are SC, SCL and their affine permutation based versions (not necessary authomorhism ensemble decoding).
+Program implementation of the permutation-based decoder of polar subcodes and the builder of polar subcodes for permutation decoding with Arikan kernel. Currently supports polar EBCH subcodes and a randomized construction. Supported decoding algorithms are SC, SCL and their affine permutation based versions (not necessary authomorhism ensemble decoding) including CRC-aided permutation decoding.
 
 ## Build
 
@@ -27,6 +27,7 @@ Usage: `Builder.exe <arguments>`. Expected arguments:
 + `-out` - path to the output file
 + `-code` - type of the code; allowed values are:
   + `ebch` - construct a polar subcode of an EBCH code
+  + `ebch-perm` -construct a polar subcode of an EBCH code for permutationd decoding
   + `rand` - construct a randomized polar subcode
   + `rand-perm` - construct a randomized polar subcode for permutation decoding
 + `-len` - code length; integer, must be a power of 2
@@ -34,12 +35,12 @@ Usage: `Builder.exe <arguments>`. Expected arguments:
 + Parameter for estimating the virtual bit subchannels error probabilities. Exactly one of arguments must be specified:
   + `-BEC` - target erasure probability in the binary erasing channel; real number between 0 and 1
   + `-gauss` - target SNR in AWGN channel (gaussian approximation for density evolution is used); real number
-+ For `-code rand` or `-code rand-perm`:
++ For `-code rand` and `-code rand-perm`:
   + `-a` - number of type-A dynamic frozen symbols; integer
   + `-b` - number of type-B dynamic frozen symbols; integer
-+ For `-code ebch`:
++ For `-code ebch` and `-code ebch-perm`:
   + `-d` - design distance of the parent EBCH code
-+ For `-code rand-perm`:
++ For `-code rand-perm` and `-code ebch-perm`:
   + `-blocks` - block structure for affine authomorphisms of base code; comma separated sequence of integers, their sum must equal $log2(N)$ where $N$ is the code length
 
 #### Example
@@ -62,18 +63,21 @@ Usage: `Decoder.exe <arguments>`. Expected arguments:
   + `scl` - successive cancellation list (SCL) decoding
   + `perm-sc` - permutation-based SC decoding
   + `perm-scl` - permutation-based SCL decoding
+  + `crc-perm-scl` - CRC-aided permutation-based SCL decoding
 + `-snr` - SNR for the noise simulation; real number
 + `-iter` - max number of iterations; integer; **optional - default value is `1000000`**
 + `-errors` - max number errors while simulating; integer; **optional - default value is `100`**
 + `period` - number of iterations between intermediate result writing; **optional - default value is `100`**
-+ For `-alg scl` and `-alg perm-scl`:
++ For `-alg scl`, `-alg perm-scl` and `-alg crc-perm-scl`:
   + `-L` - max number of paths in the SCL decoder; integer
-+ For `perm-sc` and `perm-scl`:
++ For `-alg perm-sc` and `-alg perm-scl`:
   + `-nperms` - number of permutations; integer
   + `-blocks` - block structure for affine permutations; same format as for `-blocks` argument of `Builder.exe`
   + Parameters for permutation list building. **Both arguments are optional having default value `0`**. They stem from the decomposition of every equivalence class representative matrix: $A=PU$ where $P$ is a block permutation and $U$ is an upper-triangular matrix.
     + `-dp` - minimum distance between $P$-matrices in the decompositions of distinct permutations used by decoder; integer 
     + `-du` - minimum distance between $U$-matrices; integer
++ For `-alg crc-perm-scl`:
+  + `-crc` - coefficients of generator polynomial for CRC calculation; comma separated sequence of zeros and ones (for example, sequence `1,1,0,0,0,0,1` corresponds to the polynomial $x^0+x^1+x^6$) 
 
 If the value of the `-nperms` argument is greater than the total number of the permutations equivalence classes, program stucks in an infinite loop.
 
