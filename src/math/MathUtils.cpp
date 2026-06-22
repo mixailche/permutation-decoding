@@ -76,10 +76,10 @@ std::ostream& math::operator<<(std::ostream& ostr, const VecGF2& vec)
     return ostr << "]";
 }
 
-std::vector<bool> math::CalculateCRC(const std::vector<bool>& vec, const std::vector<bool>& mod)
+std::vector<bool> math::CalculateCRC(const std::vector<bool>& vec, size_t genPolyMask)
 {
     VecGF2 remainder(vec);
-    VecGF2 generator(mod);
+    VecGF2 generator = IndexToVecGF2(genPolyMask, utils::IntLog2(genPolyMask) + 1);
 
     auto leftEnd = remainder.End();
     if (!leftEnd) {

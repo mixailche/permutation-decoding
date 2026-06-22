@@ -20,7 +20,7 @@ namespace math {
     std::ostream& operator<<(std::ostream& ostr, const MatGF2& mat);
     std::ostream& operator<<(std::ostream& ostr, const VecGF2& vec);
 
-    std::vector<bool> CalculateCRC(const std::vector<bool>& vec, const std::vector<bool>& generator);
+    std::vector<bool> CalculateCRC(const std::vector<bool>& vec, size_t genPolyMask);
 
     MatGF2 BuildArikanKernel(size_t numLayers);
     

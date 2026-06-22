@@ -8,8 +8,8 @@
 
 using codec::CRCPermSCLDecoder;
 
-CRCPermSCLDecoder::CRCPermSCLDecoder(const PolarSpecification& spec, std::vector<bool> generator, std::vector<Perm> perms, size_t maxPaths)
-    : mGenerator(std::move(generator))
+CRCPermSCLDecoder::CRCPermSCLDecoder(const PolarSpecification& spec, size_t generator, std::vector<Perm> perms, size_t maxPaths)
+    : mGenerator(generator)
     , mPerms(std::move(perms))
     , mPermutedSpecs(mPerms.size())
     , mMaxPaths(maxPaths)
@@ -24,6 +24,24 @@ CRCPermSCLDecoder::CRCPermSCLDecoder(const PolarSpecification& spec, std::vector
     );
 }
 
+static void ReverseEncode(std::vector<bool>::iterator begin, std::vector<bool>::iterator end)
+{
+    auto size = std::distance(begin, end);
+    if (size == 1) {
+        return;
+    }
+
+    auto half = size / 2;
+    auto middle = begin + half;
+
+    ReverseEncode(begin, middle);
+    ReverseEncode(middle, end);
+
+    std::transform(begin, middle, middle, begin, [](bool lhs, bool rhs) {
+        return lhs ^ rhs;
+    });
+}
+
 std::vector<bool> CRCPermSCLDecoder::Decode(const std::vector<double>& inputLLRs) const
 {
     auto length = inputLLRs.size();
@@ -35,42 +53,45 @@ std::vector<bool> CRCPermSCLDecoder::Decode(const std::vector<double>& inputLLRs
     // metric evaluation -> n operations
     // metric comparison -> 1 operation
     mNumOperations = (inputLLRs.size() + 1) * mPerms.size();
-    auto numCRCBits = mGenerator.size() - 1;
+    auto numCRCBits = utils::IntLog2(mGenerator);
     
     for (size_t i = 0; i < mPerms.size(); i++) {
         SCLDecoder decoder(&mPermutedSpecs[i], mMaxPaths);
         auto& perm = mPerms[i];
-        auto permutedCodeword = decoder.Decode(perm.ApplyDirect(inputLLRs));
-        auto codeword = perm.ApplyReversed(permutedCodeword);
-        auto u = kernel * codeword;
-        
-        std::vector<bool> infVector(dimension);
-        for (size_t i = 0, j = 0; i < length; i++) {
-            if (!mPermutedSpecs[0].StaticFrozen[i]) {
-                infVector[j++] = u[i];
-            }
-        }
-
-        auto middle = infVector.begin() + dimension - numCRCBits;
-        std::vector<bool> payload(infVector.begin(), middle);
-        std::vector<bool> crc(middle, infVector.end());
-
-        if (math::CalculateCRC(payload, mGenerator) != crc) {
-            continue;
-        }
-
+        auto permutedCodewords = decoder.ListDecode(perm.ApplyDirect(inputLLRs));
         mNumOperations += decoder.NumOperations();
 
-        double metric = 0;
-        for (size_t j = 0; j < inputLLRs.size(); j++) {
-            if ((inputLLRs[j] < 0) != codeword[j]) {
-                metric -= std::abs(inputLLRs[j]);
-            }
-        }
+        for (auto& permutedCodeword : permutedCodewords) {
+            auto codeword = perm.ApplyReversed(permutedCodeword);
+            std::vector<bool> u = codeword; // copy
+            ReverseEncode(u.begin(), u.end());
 
-        if (metric > bestMetric) {
-            bestMetric = metric;
-            bestCodeword = codeword;
+            std::vector<bool> infVector(dimension);
+            for (size_t i = 0, j = 0; i < length; i++) {
+                if (!mPermutedSpecs[0].StaticFrozen[i]) {
+                    infVector[j++] = u[i];
+                }
+            }
+
+            auto middle = infVector.begin() + dimension - numCRCBits;
+            std::vector<bool> payload(infVector.begin(), middle);
+            std::vector<bool> crc(middle, infVector.end());
+
+            if (math::CalculateCRC(payload, mGenerator) != crc) {
+                continue;
+            }
+
+            double metric = 0;
+            for (size_t j = 0; j < inputLLRs.size(); j++) {
+                if ((inputLLRs[j] < 0) != codeword[j]) {
+                    metric -= std::abs(inputLLRs[j]);
+                }
+            }
+
+            if (metric > bestMetric) {
+                bestMetric = metric;
+                bestCodeword = std::move(codeword);
+            }
         }
     }
 

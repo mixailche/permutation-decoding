@@ -51,14 +51,6 @@ std::vector<bool> PolarEncoder::Encode(const std::vector<bool>& infVector) const
     }
 
     Polarize(codeword.begin(), codeword.end());
-    /*math::VecGF2 vec(std::move(codeword));
-    auto kernel = math::BuildArikanKernel(utils::IntLog2(mSpec->Length));
-    auto polarized = kernel.Transpose() * vec;
 
-    std::vector<bool> result(mSpec->Length);
-    for (size_t i = 0; i < mSpec->Length; i++) {
-        result[i] = polarized[i];
-    }
-    return result;*/
     return codeword;
 }

@@ -13,7 +13,7 @@ namespace codec {
 
         CRCPermSCLDecoder(
             const PolarSpecification& spec,
-            std::vector<bool> generator, std::vector<Perm> perms, size_t maxPaths);
+            size_t generator, std::vector<Perm> perms, size_t maxPaths);
         
         ~CRCPermSCLDecoder() override = default;
 
@@ -21,7 +21,7 @@ namespace codec {
         size_t NumOperations() const override;
 
     private:
-        std::vector<bool> mGenerator;
+        size_t mGenerator;
         std::vector<Perm> mPerms;
         std::vector<PolarSpecification> mPermutedSpecs;
         size_t mMaxPaths;

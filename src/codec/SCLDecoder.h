@@ -9,6 +9,7 @@ namespace codec {
         ~SCLDecoder() override;
 
         std::vector<bool> Decode(const std::vector<double>& inputLLRs) const override;
+        std::vector<std::vector<bool>> ListDecode(const std::vector<double>& inputLLRs) const;
         size_t NumOperations() const override;
 
     private:

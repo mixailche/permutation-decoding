@@ -367,6 +367,30 @@ std::vector<bool> SCLDecoder::Decode(const std::vector<double>& inputLLRs) const
     return std::vector(bestPathSymbols, bestPathSymbols + mSpec->Length);
 }
 
+std::vector<std::vector<bool>> SCLDecoder::ListDecode(const std::vector<double>& inputLLRs) const
+{
+    Initialize();
+
+    auto activePathLLRs = GetLLRsArray(mNumLayers, mMaxPaths - 1);
+    std::copy(inputLLRs.begin(), inputLLRs.end(), activePathLLRs);
+
+    ProcessLayer(mNumLayers, 0);
+
+    size_t bestPathIdx = -1;
+    double bestMetric = std::numeric_limits<double>::max();
+    std::vector<std::vector<bool>> codewords;
+
+    for (size_t pathIdx = 0; pathIdx < mMaxPaths; pathIdx++) {
+        if (!mIsActivePath[pathIdx]) {
+            continue;
+        }
+        auto pSymbols = GetSymbolsArray(mNumLayers, pathIdx);
+        codewords.emplace_back(pSymbols, pSymbols + mSpec->Length);
+    }
+
+    return codewords;
+}
+
 size_t SCLDecoder::NumOperations() const
 {
     return mNumOperations;

@@ -27,14 +27,14 @@ namespace running {
     template <typename Callback>
     SimulationResult Simulate(
         const codec::PolarSpecification* pSpec, const codec::Decoder& decoder,
-        SimulationOptions opt, Callback callback, const std::vector<bool> crcGenerator = {})
+        SimulationOptions opt, Callback callback, size_t crcGenerator = 0)
     {
         static std::random_device device;
         static std::mt19937 gen(device());
         static std::uniform_int_distribution<int> symbolDistr(0, 1);
         static auto generateSymbol = [] { return symbolDistr(gen); };
 
-        auto numCRCBits = crcGenerator.empty() ? 0 : crcGenerator.size() - 1;
+        auto numCRCBits = crcGenerator == 0 ? 0 : utils::IntLog2(crcGenerator);
         auto rate = static_cast<double>(pSpec->Dimension - numCRCBits) / pSpec->Length;
         auto stddev = std::pow(10.0, -opt.SignalNoiseRatio / 20) / std::sqrt(2 * rate);
         auto variance = stddev * stddev;
@@ -57,7 +57,7 @@ namespace running {
             std::generate(infVector.begin(), infVector.end(), generateSymbol);
 
             std::vector<bool> crc;
-            if (!crcGenerator.empty()) {
+            if (crcGenerator != 0) {
                 crc = math::CalculateCRC(infVector, crcGenerator);
             }
 

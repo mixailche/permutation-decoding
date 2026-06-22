@@ -56,6 +56,17 @@ static codec::PolarSpecification ReadSpecification(std::istream& istr)
     return spec;
 }
 
+static size_t MakeCRCGenerator(size_t numCRCBits)
+{
+    size_t crcGenerator = (1ull << numCRCBits) | 1;
+    for (size_t i = 1; i < numCRCBits; i++) {
+        if (std::rand() % 2) {
+            crcGenerator |= 1ull << i;
+        }
+    }
+    return crcGenerator;
+}
+
 static running::SimulationResult RunSimulator(
     const running::ArgsReader& reader,
     const codec::PolarSpecification& spec)
@@ -90,7 +101,7 @@ static running::SimulationResult RunSimulator(
         callbackPeriod
     };
 
-    auto RunWithDecoder = [&](const codec::Decoder& decoder, const std::vector<bool>& crcGenerator = {}) {
+    auto RunWithDecoder = [&](const codec::Decoder& decoder, size_t crcGenerator = 0) {
         return running::Simulate(&spec, decoder, options, PrintErrorRate, crcGenerator);
     };
 
@@ -109,10 +120,7 @@ static running::SimulationResult RunSimulator(
         return RunWithDecoder(codec::PermSCLDecoder(spec, BuildPerms(), reader.GetNumberArg("L")));
     }
     else if (algorithm == "crc-perm-scl") {
-        auto rawCrcGenerator = reader.GetNumberListArg("crc");
-        std::vector<bool> crcGenerator(rawCrcGenerator.size());
-        std::transform(rawCrcGenerator.begin(), rawCrcGenerator.end(), crcGenerator.begin(),
-            [](size_t x) -> bool { return x; });
+        auto crcGenerator = MakeCRCGenerator(reader.GetNumberArg("crc"));
         return RunWithDecoder(codec::CRCPermSCLDecoder(spec, crcGenerator, BuildPerms(), reader.GetNumberArg("L")), crcGenerator);
     }
     else {
