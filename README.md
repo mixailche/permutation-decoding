@@ -1,6 +1,6 @@
 # Permutation decoding of polar subcodes
 
-Program implementation of the permutation-based decoder of polar subcodes and the builder of polar subcodes for permutation decoding with Arikan kernel. Currently supports polar EBCH subcodes and a randomized construction. Supported decoding algorithms are SC, SCL and their affine permutation based versions (not necessary authomorhism ensemble decoding) including CRC-aided permutation decoding.
+Software implementation of the permutation-based decoder of polar subcodes and the builder of polar subcodes for permutation decoding with Arikan kernel. Currently supports polar EBCH subcodes and a randomized construction. Supported decoding algorithms are SC, SCL and their affine permutation based versions (not necessary authomorhism ensemble decoding) including CRC-aided permutation decoding.
 
 ## Build
 
