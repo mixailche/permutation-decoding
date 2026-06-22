@@ -77,7 +77,7 @@ Usage: `Decoder.exe <arguments>`. Expected arguments:
     + `-dp` - minimum distance between $P$-matrices in the decompositions of distinct permutations used by decoder; integer 
     + `-du` - minimum distance between $U$-matrices; integer
 + For `-alg crc-perm-scl`:
-  + `-crc` - coefficients of generator polynomial for CRC calculation; comma separated sequence of zeros and ones (for example, sequence `1,1,0,0,0,0,1` corresponds to the polynomial $x^0+x^1+x^6$) 
+  + `-crc` - number of outer CRC bits 
 
 If the value of the `-nperms` argument is greater than the total number of the permutations equivalence classes, program stucks in an infinite loop.
 
